@@ -20,6 +20,18 @@ class Blockchain(object):
         # Create the genesis block
         self.new_block(previous_hash=1, proof=100)
 
+    def new_transaction(self, sender, recipient, amount):
+        # :param sender: <str> Address of the Recipient
+        # :param recipient: <str> Address of the Recipient
+        # :param amount: <int> Amount
+        # :return: <int> The index of the `block` that will hold this transaction
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount
+        })
+        return self.last_block['index'] + 1
+
     def new_block(self, proof, previous_hash=None):
         """
         Create a new Block in the Blockchain
@@ -130,8 +142,36 @@ node_identifier = str(uuid4()).replace('-', '')
 blockchain = Blockchain()
 
 
+@app.route('/transactions/new', methods=['POST'])
+def recieve_transaction():
+    # Create an endpoint at `/transactions/new` that accepts a json `POST`:
+
+    # use `request.get_json()` to pull the data out of the POST
+    # check that 'sender', 'recipient', and 'amount' are present
+    # return a 400 error using `jsonify(response)` with a 'message'
+    # upon success, return a 'message' indicating index of the block
+    # containing the transaction
+
+    data = request.get_json()
+    print(request.get_data())
+    try:
+        recipient = data['recipient']
+        amount = data['amount']
+        sender = data['sender']
+    except:
+        return jsonify({'message': 'Error'}, 400)
+
+    blockchain.new_transaction(sender, recipient, amount)
+
+    response = {"message": f"Transaction will be added to block {blockchain.last_block['index']+1}"}
+    return jsonify(response,  201)
+
+
 @app.route('/mine', methods=['POST'])
 def mine():
+    # * The sender is "0" to signify that this node created a new coin
+    # * The recipient is the id of the miner
+    # * The amount is 1 coin as a reward for mining the next block
     data = request.get_json()
     print(request.get_data())
     try:
@@ -146,6 +186,7 @@ def mine():
         # Forge the new Block by adding it to the chain with the proof
         previous_hash = blockchain.hash(blockchain.last_block)
         block = blockchain.new_block(submitted_proof, previous_hash)
+        blockchain.new_transaction('0', data['id'], 2)
         response = {
             'new_block': block
         }
@@ -153,7 +194,7 @@ def mine():
         print(response['new_block'])
         return jsonify(response), 200
     else:
-        response = {'message' : 'Invalid proof'}
+        response = {'message': 'Invalid proof'}
         return jsonify(response), 200
 
 
