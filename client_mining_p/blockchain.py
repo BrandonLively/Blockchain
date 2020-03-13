@@ -114,7 +114,7 @@ class Blockchain(object):
         guess = f'{block_string}{proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
 
-        return guess_hash[:6] == "000000"
+        return guess_hash[:3] == "000"
         # return True or False
 
 
@@ -131,22 +131,28 @@ blockchain = Blockchain()
 @app.route('/mine', methods=['POST'])
 def mine():
     data = request.get_json()
+    print(request.get_data())
     try:
-        proof = data['proof']
+        submitted_proof = data['proof']
         id = data['id']
     except:
         return jsonify({'message': 'Error'}, 400)
     # Run the proof of work algorithm to get the next proof
-    proof = blockchain.proof_of_work(blockchain.last_block)
 
-    # Forge the new Block by adding it to the chain with the proof
-    previous_hash = blockchain.hash(blockchain.last_block)
-    block = blockchain.new_block(proof, previous_hash)
-    response = {
-        'new_block': block
-    }
+    block_string = json.dumps(blockchain.last_block, sort_keys=True)
+    if blockchain.valid_proof(block_string, submitted_proof):
+        # Forge the new Block by adding it to the chain with the proof
+        previous_hash = blockchain.hash(blockchain.last_block)
+        block = blockchain.new_block(submitted_proof, previous_hash)
+        response = {
+            'new_block': block
+        }
 
-    return jsonify(response), 200
+        print(response['new_block'])
+        return jsonify(response), 200
+    else:
+        response = {'message' : 'Invalid proof'}
+        return jsonify(response), 200
 
 
 @app.route('/chain', methods=['GET'])
@@ -160,7 +166,7 @@ def full_chain():
 
 
 @app.route('/last_block', methods=['GET'])
-def full_chain():
+def return_last_block():
     response = {
         'last_block': blockchain.last_block
     }
